@@ -99,6 +99,7 @@ document.getElementById('master-vol').addEventListener('input', (e) => {
   const v = parseFloat(e.target.value);
   document.getElementById('master-vol-display').textContent = Math.round(v * 100) + '%';
   sendDSP('masterVolume', v);
+  chrome.storage.local.set({ masterVolume: v });
 });
 
 // ---------------------------------------------------------------------------
@@ -112,18 +113,21 @@ document.getElementById('toggle-compressor').addEventListener('click', () => {
   document.getElementById('toggle-compressor').classList.toggle('on', compEnabled);
   document.getElementById('fx-compressor').classList.toggle('enabled', compEnabled);
   sendDSP('compressor', { enabled: compEnabled });
+  chrome.storage.local.set({ compEnabled });
 });
 
 document.getElementById('comp-threshold').addEventListener('input', (e) => {
   const v = parseFloat(e.target.value);
   document.getElementById('comp-threshold-display').textContent = v + ' dB';
   sendDSP('compressor', { threshold: v });
+  chrome.storage.local.set({ compThreshold: v });
 });
 
 document.getElementById('comp-ratio').addEventListener('input', (e) => {
   const v = parseFloat(e.target.value);
   document.getElementById('comp-ratio-display').textContent = v + ':1';
   sendDSP('compressor', { ratio: v });
+  chrome.storage.local.set({ compRatio: v });
 });
 
 // ---------------------------------------------------------------------------
@@ -253,16 +257,45 @@ document.getElementById('preset-delete-btn').addEventListener('click', async () 
 // Stereo widener
 document.getElementById('stereo-width').addEventListener('input', (e) => {
   const v = parseFloat(e.target.value);
-  const label = v < 0.95 ? 'Narrow' : v > 1.05 ? 'Wide' : 'Normal';
   document.getElementById('stereo-width-display').textContent =
     v < 0.95 ? Math.round(v * 100) + '%' : v > 1.05 ? '+' + Math.round((v - 1) * 100) + '%' : 'Normal';
   sendDSP('stereoWidth', v);
+  chrome.storage.local.set({ stereoWidth: v });
 });
 
-// Restore saved EQ state when popup opens
-chrome.storage.local.get('eqState', ({ eqState }) => {
-  if (eqState) applyEQBands(eqState);
-});
+// Restore saved state when popup opens
+chrome.storage.local.get(
+  ['eqState', 'masterVolume', 'compEnabled', 'compThreshold', 'compRatio', 'stereoWidth'],
+  (s) => {
+    if (s.eqState) applyEQBands(s.eqState);
+
+    if (s.masterVolume != null) {
+      document.getElementById('master-vol').value = s.masterVolume;
+      document.getElementById('master-vol-display').textContent = Math.round(s.masterVolume * 100) + '%';
+    }
+
+    if (s.compEnabled) {
+      compEnabled = true;
+      document.getElementById('toggle-compressor').classList.add('on');
+      document.getElementById('fx-compressor').classList.add('enabled');
+    }
+    if (s.compThreshold != null) {
+      document.getElementById('comp-threshold').value = s.compThreshold;
+      document.getElementById('comp-threshold-display').textContent = s.compThreshold + ' dB';
+    }
+    if (s.compRatio != null) {
+      document.getElementById('comp-ratio').value = s.compRatio;
+      document.getElementById('comp-ratio-display').textContent = s.compRatio + ':1';
+    }
+
+    if (s.stereoWidth != null) {
+      const w = s.stereoWidth;
+      document.getElementById('stereo-width').value = w;
+      document.getElementById('stereo-width-display').textContent =
+        w < 0.95 ? Math.round(w * 100) + '%' : w > 1.05 ? '+' + Math.round((w - 1) * 100) + '%' : 'Normal';
+    }
+  }
+);
 
 // Persist EQ state on any change
 function persistEQState() {
