@@ -30,7 +30,7 @@
         "https://listen.tidal.com/*"
       ],
       "js": [
-        "content-dsp.js"
+        "dist/content-dsp.js"
       ],
       "world": "MAIN",
       "run_at": "document_start"
@@ -43,7 +43,7 @@
         "https://listen.tidal.com/*"
       ],
       "js": [
-        "content-bridge.js"
+        "dist/content-bridge.js"
       ],
       "run_at": "document_start"
     }

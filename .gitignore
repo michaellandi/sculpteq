@@ -3,3 +3,9 @@
 
 # Private key (should live outside this directory anyway)
 *.pem
+
+# Build output
+dist/
+
+# Dependencies
+node_modules/

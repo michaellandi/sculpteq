@@ -1,13 +1,56 @@
 /**
- * content-dsp.js — SculptEQ DSP chain (runs in MAIN world)
+ * content-dsp.ts — SculptEQ DSP chain (runs in MAIN world)
  *
  * Patches the page's Web Audio API and routes all media element audio
  * through a 16-band parametric EQ + compressor chain.
  *
- * Receives DSP parameter updates via window.postMessage from content-bridge.js.
+ * Receives DSP parameter updates via window.postMessage from content-bridge.ts.
  */
 
-const EQ_BANDS = [
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+interface BandDef {
+  freq: number;
+  type: BiquadFilterType;
+}
+
+interface CompressorState {
+  enabled: boolean;
+  threshold: number;
+  ratio: number;
+}
+
+interface DspState {
+  eq: number[];
+  compressor: CompressorState;
+  masterVolume: number;
+  stereoWidth: number;
+}
+
+interface WidenerNodes {
+  splitter: ChannelSplitterNode;
+  merger: ChannelMergerNode;
+  gainLL: GainNode;
+  gainRL: GainNode;
+  gainLR: GainNode;
+  gainRR: GainNode;
+}
+
+type DspMessage =
+  | { type: 'eq-band';      value: { index: number; gain: number } }
+  | { type: 'eq-all';       value: number[] }
+  | { type: 'compressor';   value: Partial<CompressorState> }
+  | { type: 'masterVolume'; value: number }
+  | { type: 'stereoWidth';  value: number }
+  | { type: 'ping' };
+
+// ---------------------------------------------------------------------------
+// EQ band definitions
+// ---------------------------------------------------------------------------
+
+const EQ_BANDS: BandDef[] = [
   { freq: 25,    type: 'lowshelf'  },
   { freq: 40,    type: 'peaking'   },
   { freq: 63,    type: 'peaking'   },
@@ -30,30 +73,34 @@ const EQ_BANDS = [
 // DSP state
 // ---------------------------------------------------------------------------
 
-let audioCtx    = null;
-let eqFilters   = [];
-let compressor  = null;
-let masterGain  = null;
-let entryNode   = null;
-let widenerNodes = null; // { splitter, merger, gainLL, gainRL, gainLR, gainRR }
+let audioCtx:     AudioContext | null = null;
+let eqFilters:    BiquadFilterNode[]  = [];
+let compressor:   DynamicsCompressorNode | null = null;
+let masterGain:   GainNode | null = null;
+let entryNode:    BiquadFilterNode | null = null;
+let widenerNodes: WidenerNodes | null = null;
 
-const dspState = {
-  eq:           new Array(16).fill(0),
+const dspState: DspState = {
+  eq:           new Array(16).fill(0) as number[],
   compressor:   { enabled: false, threshold: -24, ratio: 4 },
   masterVolume: 1.0,
   stereoWidth:  1.0,
 };
 
-const connectedElements = new WeakSet();
+const connectedElements = new WeakSet<HTMLMediaElement>();
 
-const OriginalAudioContext          = window.AudioContext || window.webkitAudioContext;
-const nativeCreateMediaElementSource = OriginalAudioContext.prototype.createMediaElementSource;
+type WindowWithWebkit = Window & { webkitAudioContext?: typeof AudioContext };
+const OriginalAudioContext =
+  window.AudioContext ?? (window as WindowWithWebkit).webkitAudioContext!;
+const nativeCreateMediaElementSource =
+  OriginalAudioContext.prototype.createMediaElementSource.bind as
+  (thisArg: AudioContext, el: HTMLMediaElement) => MediaElementAudioSourceNode;
 
 // ---------------------------------------------------------------------------
 // Build DSP chain
 // ---------------------------------------------------------------------------
 
-function buildDSPChain(ctx) {
+function buildDSPChain(ctx: AudioContext): void {
   eqFilters = EQ_BANDS.map((band) => {
     const f = ctx.createBiquadFilter();
     f.type            = band.type;
@@ -81,10 +128,10 @@ function buildDSPChain(ctx) {
   // R_out = ((1-w)/2)*L + ((1+w)/2)*R
   const splitter = ctx.createChannelSplitter(2);
   const merger   = ctx.createChannelMerger(2);
-  const gainLL   = ctx.createGain(); // L → L_out
-  const gainRL   = ctx.createGain(); // R → L_out
-  const gainLR   = ctx.createGain(); // L → R_out
-  const gainRR   = ctx.createGain(); // R → R_out
+  const gainLL   = ctx.createGain();
+  const gainRL   = ctx.createGain();
+  const gainLR   = ctx.createGain();
+  const gainRR   = ctx.createGain();
 
   splitter.connect(gainLL, 0); splitter.connect(gainRL, 1);
   splitter.connect(gainLR, 0); splitter.connect(gainRR, 1);
@@ -103,7 +150,7 @@ function buildDSPChain(ctx) {
   console.log('[SculptEQ] 16-band DSP chain built');
 }
 
-function getOrCreateContext() {
+function getOrCreateContext(): AudioContext {
   if (audioCtx) return audioCtx;
   audioCtx = new OriginalAudioContext();
   buildDSPChain(audioCtx);
@@ -114,45 +161,46 @@ function getOrCreateContext() {
 // Connect media elements
 // ---------------------------------------------------------------------------
 
-function connectElement(el) {
+function connectElement(el: HTMLMediaElement): void {
   if (connectedElements.has(el)) return;
   connectedElements.add(el);
   const ctx = getOrCreateContext();
   try {
-    const source = nativeCreateMediaElementSource.call(ctx, el);
-    source.connect(entryNode);
+    const source = OriginalAudioContext.prototype.createMediaElementSource.call(ctx, el);
+    source.connect(entryNode!);
     if (ctx.state === 'suspended') ctx.resume();
     console.log(`[SculptEQ] Connected <${el.tagName.toLowerCase()}>`);
   } catch (e) {
-    console.warn('[SculptEQ] Could not connect element:', e.message);
+    console.warn('[SculptEQ] Could not connect element:', (e as Error).message);
   }
 }
 
-function hookElements() {
-  document.querySelectorAll('video, audio').forEach(connectElement);
+function hookElements(): void {
+  document.querySelectorAll<HTMLMediaElement>('video, audio').forEach(connectElement);
 }
 
-['play', 'playing', 'canplay'].forEach((evt) => {
-  document.addEventListener(evt, (e) => {
+(['play', 'playing', 'canplay'] as const).forEach((evt) => {
+  document.addEventListener(evt, (e: Event) => {
     if (e.target instanceof HTMLMediaElement) connectElement(e.target);
   }, { capture: true });
 });
 
 // Patch AudioContext so the page's own context gets routed through our chain
-window.AudioContext = window.webkitAudioContext = class extends OriginalAudioContext {
-  constructor(...args) {
-    super(...args);
+window.AudioContext = (window as WindowWithWebkit).webkitAudioContext = class extends OriginalAudioContext {
+  constructor(...args: unknown[]) {
+    super(...(args as []));
     if (!audioCtx) { audioCtx = this; buildDSPChain(this); }
   }
-  createMediaElementSource(el) {
+  createMediaElementSource(el: HTMLMediaElement): MediaElementAudioSourceNode {
     connectElement(el);
     const silent = this.createGain();
     silent.gain.value = 0;
-    return silent;
+    // Return a silent gain node — the real routing is done inside connectElement
+    return silent as unknown as MediaElementAudioSourceNode;
   }
 };
 
-function initObservers() {
+function initObservers(): void {
   hookElements();
   new MutationObserver(hookElements).observe(document.documentElement, {
     childList: true, subtree: true,
@@ -169,7 +217,7 @@ if (document.readyState === 'loading') {
 // Apply DSP parameters
 // ---------------------------------------------------------------------------
 
-function applyStereoWidth(w) {
+function applyStereoWidth(w: number): void {
   if (!widenerNodes) return;
   const { gainLL, gainRL, gainLR, gainRR } = widenerNodes;
   gainLL.gain.value = (1 + w) / 2;
@@ -178,7 +226,7 @@ function applyStereoWidth(w) {
   gainRR.gain.value = (1 + w) / 2;
 }
 
-function applyParams() {
+function applyParams(): void {
   if (!eqFilters.length) return;
   dspState.eq.forEach((gain, i) => {
     if (eqFilters[i]) eqFilters[i].gain.value = gain;
@@ -191,33 +239,33 @@ function applyParams() {
 }
 
 // ---------------------------------------------------------------------------
-// Receive messages from content-bridge.js (ISOLATED world → MAIN world)
+// Receive messages from content-bridge.ts (ISOLATED world → MAIN world)
 // ---------------------------------------------------------------------------
 
-window.addEventListener('message', (e) => {
+window.addEventListener('message', (e: MessageEvent) => {
   if (!e.data || e.data.source !== 'sculpteq-bridge') return;
-  const { type, value } = e.data.payload;
+  const msg = e.data.payload as DspMessage;
 
-  switch (type) {
+  switch (msg.type) {
     case 'eq-band':
-      dspState.eq[value.index] = value.gain;
-      if (eqFilters[value.index]) eqFilters[value.index].gain.value = value.gain;
+      dspState.eq[msg.value.index] = msg.value.gain;
+      if (eqFilters[msg.value.index]) eqFilters[msg.value.index].gain.value = msg.value.gain;
       break;
     case 'eq-all':
-      dspState.eq = [...value];
+      dspState.eq = [...msg.value];
       applyParams();
       break;
     case 'compressor':
-      Object.assign(dspState.compressor, value);
+      Object.assign(dspState.compressor, msg.value);
       applyParams();
       break;
     case 'masterVolume':
-      dspState.masterVolume = value;
-      if (masterGain) masterGain.gain.value = value;
+      dspState.masterVolume = msg.value;
+      if (masterGain) masterGain.gain.value = msg.value;
       break;
     case 'stereoWidth':
-      dspState.stereoWidth = value;
-      applyStereoWidth(value);
+      dspState.stereoWidth = msg.value;
+      applyStereoWidth(msg.value);
       break;
     case 'ping':
       window.postMessage({ source: 'sculpteq-dsp', type: 'pong' }, '*');
@@ -225,4 +273,4 @@ window.addEventListener('message', (e) => {
   }
 });
 
-console.log('[SculptEQ] content-dsp.js loaded');
+console.log('[SculptEQ] content-dsp.ts loaded');
