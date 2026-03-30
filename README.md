@@ -1,5 +1,7 @@
 # SculptEQ
 
+[![CI](https://github.com/michaellandi/sculpteq/actions/workflows/ci.yml/badge.svg)](https://github.com/michaellandi/sculpteq/actions/workflows/ci.yml)
+
 ![SculptEQ popup](assets/screenshot.png)
 
 A Chrome extension that adds a 16-band parametric EQ, dynamics compressor, and stereo widener to your favourite music streaming services.
