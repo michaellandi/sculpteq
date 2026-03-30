@@ -2,6 +2,8 @@
  * popup.ts — SculptEQ extension popup
  */
 
+import { formatVolume, formatStereoWidth } from './utils';
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -117,7 +119,7 @@ updateStatus();
 
 document.getElementById('master-vol')!.addEventListener('input', (e) => {
   const v = parseFloat((e.target as HTMLInputElement).value);
-  document.getElementById('master-vol-display')!.textContent = Math.round(v * 100) + '%';
+  document.getElementById('master-vol-display')!.textContent = formatVolume(v);
   sendDSP('masterVolume', v);
   chrome.storage.local.set({ masterVolume: v });
 });
@@ -280,8 +282,7 @@ document.getElementById('preset-delete-btn')!.addEventListener('click', async ()
 
 document.getElementById('stereo-width')!.addEventListener('input', (e) => {
   const v = parseFloat((e.target as HTMLInputElement).value);
-  document.getElementById('stereo-width-display')!.textContent =
-    v < 0.95 ? Math.round(v * 100) + '%' : v > 1.05 ? '+' + Math.round((v - 1) * 100) + '%' : 'Normal';
+  document.getElementById('stereo-width-display')!.textContent = formatStereoWidth(v);
   sendDSP('stereoWidth', v);
   chrome.storage.local.set({ stereoWidth: v });
 });
@@ -299,7 +300,7 @@ chrome.storage.local.get(
 
     if (s.masterVolume != null) {
       (document.getElementById('master-vol') as HTMLInputElement).value = String(s.masterVolume);
-      document.getElementById('master-vol-display')!.textContent = Math.round(s.masterVolume * 100) + '%';
+      document.getElementById('master-vol-display')!.textContent = formatVolume(s.masterVolume);
     }
 
     if (s.compEnabled) {
@@ -319,8 +320,7 @@ chrome.storage.local.get(
     if (s.stereoWidth != null) {
       const w = s.stereoWidth;
       (document.getElementById('stereo-width') as HTMLInputElement).value = String(w);
-      document.getElementById('stereo-width-display')!.textContent =
-        w < 0.95 ? Math.round(w * 100) + '%' : w > 1.05 ? '+' + Math.round((w - 1) * 100) + '%' : 'Normal';
+      document.getElementById('stereo-width-display')!.textContent = formatStereoWidth(w);
     }
   }
 );

@@ -3,11 +3,19 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "tsc",
-    "watch": "tsc --watch"
+    "build": "node build.mjs",
+    "typecheck": "tsc",
+    "watch": "node build.mjs --watch",
+    "test": "jest",
+    "coverage": "jest --coverage"
   },
   "devDependencies": {
     "@types/chrome": "^0.0.300",
+    "@types/jest": "^29.5.0",
+    "esbuild": "^0.24.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "ts-jest": "^29.2.0",
     "typescript": "^5.7.0"
   }
 }

@@ -6,14 +6,21 @@
  */
 
 // Popup → DSP: forward chrome messages into the page via postMessage
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+export function handleChromeMessage(
+  message: Record<string, unknown>,
+  _sender: chrome.runtime.MessageSender,
+  sendResponse: (r: unknown) => void,
+): void {
   if (message.source !== 'sculpteq-popup') return;
   window.postMessage({ source: 'sculpteq-bridge', payload: message.payload }, '*');
   sendResponse({ ok: true });
-});
+}
 
 // DSP → Popup: forward page messages back through chrome.runtime
-window.addEventListener('message', (e: MessageEvent) => {
+export function handleWindowMessage(e: MessageEvent): void {
   if (!e.data || e.data.source !== 'sculpteq-dsp') return;
-  chrome.runtime.sendMessage({ source: 'sculpteq-content', ...e.data }).catch(() => {});
-});
+  chrome.runtime.sendMessage({ ...e.data, source: 'sculpteq-content' }).catch(() => {});
+}
+
+chrome.runtime.onMessage.addListener(handleChromeMessage);
+window.addEventListener('message', handleWindowMessage);

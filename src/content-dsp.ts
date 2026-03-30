@@ -7,6 +7,8 @@
  * Receives DSP parameter updates via window.postMessage from content-bridge.ts.
  */
 
+import { stereoGains } from './utils';
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -92,9 +94,6 @@ const connectedElements = new WeakSet<HTMLMediaElement>();
 type WindowWithWebkit = Window & { webkitAudioContext?: typeof AudioContext };
 const OriginalAudioContext =
   window.AudioContext ?? (window as WindowWithWebkit).webkitAudioContext!;
-const nativeCreateMediaElementSource =
-  OriginalAudioContext.prototype.createMediaElementSource.bind as
-  (thisArg: AudioContext, el: HTMLMediaElement) => MediaElementAudioSourceNode;
 
 // ---------------------------------------------------------------------------
 // Build DSP chain
@@ -219,11 +218,11 @@ if (document.readyState === 'loading') {
 
 function applyStereoWidth(w: number): void {
   if (!widenerNodes) return;
-  const { gainLL, gainRL, gainLR, gainRR } = widenerNodes;
-  gainLL.gain.value = (1 + w) / 2;
-  gainRL.gain.value = (1 - w) / 2;
-  gainLR.gain.value = (1 - w) / 2;
-  gainRR.gain.value = (1 + w) / 2;
+  const g = stereoGains(w);
+  widenerNodes.gainLL.gain.value = g.ll;
+  widenerNodes.gainRL.gain.value = g.rl;
+  widenerNodes.gainLR.gain.value = g.lr;
+  widenerNodes.gainRR.gain.value = g.rr;
 }
 
 function applyParams(): void {
