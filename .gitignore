@@ -1,0 +1,5 @@
+# Extension ID note (local only)
+.ext-id
+
+# Private key (should live outside this directory anyway)
+*.pem

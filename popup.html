@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>SculptEQ</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0a0a0a;
+      --surface: #141414;
+      --border:  #2a2a2a;
+      --accent:  #3489eb;
+      --accent2: #5ba3f5;
+      --text:    #e0e0e0;
+      --muted:   #666;
+    }
+
+    body {
+      width: 740px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 12px;
+      padding: 12px 14px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    /* ── Header ── */
+    #header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    #logo {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 0.08em;
+    }
+
+    #status {
+      font-size: 11px;
+      color: var(--muted);
+      flex: 1;
+    }
+    #status.active { color: #4caf50; }
+
+    #master-vol-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    #master-vol-wrap label { color: var(--muted); }
+
+    /* ── EQ row ── */
+    #eq-section {
+      display: flex;
+      align-items: flex-end;
+      gap: 0;
+      border-top: 1px solid var(--border);
+      padding-top: 8px;
+    }
+
+    #eq-label {
+      color: var(--accent);
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      margin-right: 8px;
+      align-self: center;
+      white-space: nowrap;
+    }
+
+    #eq-bands {
+      display: flex;
+      align-items: flex-end;
+      gap: 4px;
+      flex: 1;
+    }
+
+    .eq-band {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      min-width: 18px;
+    }
+    .eq-band .val  { color: var(--text);  font-size: 9px; min-width: 24px; text-align: center; }
+    .eq-band .freq { color: var(--muted); font-size: 9px; }
+
+    /* ── Preset section ── */
+    #preset-section {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    #preset-section .row {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    select, input[type=text] {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 11px;
+      padding: 3px 5px;
+      border-radius: 4px;
+    }
+    select { flex: 1; }
+    input[type=text] { flex: 1; }
+    input[type=text]::placeholder { color: var(--muted); }
+
+    .btn {
+      padding: 3px 9px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      font-size: 11px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+    .btn:hover   { color: var(--text); border-color: #555; }
+    .btn.primary { border-color: var(--accent); color: var(--accent); }
+    .btn.primary:hover { background: var(--accent); color: #fff; }
+    .btn.danger:hover  { border-color: #c0392b; color: #c0392b; }
+
+    /* ── FX row ── */
+    #fx-section {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-top: 1px solid var(--border);
+      padding-top: 8px;
+    }
+
+    .fx-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 10px;
+    }
+    .fx-group.enabled { border-color: var(--accent2); }
+
+    .fx-toggle {
+      width: 26px; height: 13px;
+      background: var(--border);
+      border-radius: 7px;
+      position: relative;
+      cursor: pointer;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+    .fx-toggle.on { background: var(--accent2); }
+    .fx-toggle::after {
+      content: '';
+      position: absolute;
+      width: 9px; height: 9px;
+      background: #fff;
+      border-radius: 50%;
+      top: 2px; left: 2px;
+      transition: left 0.2s;
+    }
+    .fx-toggle.on::after { left: 15px; }
+
+    .fx-label { color: var(--muted); font-weight: 600; font-size: 11px; }
+    .fx-group.enabled .fx-label { color: var(--text); }
+
+    .val-display { color: var(--text); font-size: 10px; min-width: 34px; text-align: right; }
+
+    /* ── Sliders ── */
+    input[type=range] { -webkit-appearance: none; background: transparent; cursor: pointer; }
+    input[type=range].vertical {
+      writing-mode: vertical-lr;
+      direction: rtl;
+      width: 4px;
+      height: 120px;
+    }
+    input[type=range].horizontal { height: 4px; width: 70px; }
+    input[type=range]::-webkit-slider-runnable-track {
+      background: var(--border); border-radius: 2px; height: 4px;
+    }
+    input[type=range].vertical::-webkit-slider-runnable-track { width: 4px; height: 100%; }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 11px; height: 11px;
+      background: var(--accent); border-radius: 50%; margin-top: -3.5px;
+    }
+    input[type=range].vertical::-webkit-slider-thumb { margin-top: 0; margin-left: -3.5px; }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div id="header">
+    <span id="logo">SculptEQ</span>
+    <span id="status">No music tab active</span>
+    <div id="master-vol-wrap">
+      <label>VOL</label>
+      <input type="range" class="horizontal" id="master-vol" min="0" max="1" step="0.01" value="1" style="width:80px" />
+      <span class="val-display" id="master-vol-display">100%</span>
+    </div>
+  </div>
+
+  <!-- Presets -->
+  <div id="preset-section">
+    <div class="row">
+      <select id="preset-select"><option value="">— select preset —</option></select>
+      <button class="btn primary" id="preset-load-btn">Load</button>
+      <button class="btn danger"  id="preset-delete-btn">Del</button>
+      <button class="btn primary" id="preset-save-btn">Save</button>
+    </div>
+    <div class="row" id="preset-name-row" style="display:none">
+      <input type="text" id="preset-name" maxlength="32" placeholder="Preset name…" />
+      <button class="btn primary" id="preset-confirm-btn">OK</button>
+      <button class="btn"         id="preset-cancel-btn">✕</button>
+    </div>
+  </div>
+
+  <!-- EQ -->
+  <div id="eq-section">
+    <span id="eq-label">EQ</span>
+    <div id="eq-bands"><!-- generated by popup.js --></div>
+  </div>
+
+  <!-- FX -->
+  <div id="fx-section">
+    <div class="fx-group" id="fx-compressor">
+      <div class="fx-toggle" id="toggle-compressor"></div>
+      <span class="fx-label">COMP</span>
+      <input type="range" class="horizontal" id="comp-threshold" min="-60" max="0" step="1" value="-24" />
+      <span class="val-display" id="comp-threshold-display">-24 dB</span>
+      <input type="range" class="horizontal" id="comp-ratio" min="1" max="20" step="0.5" value="4" />
+      <span class="val-display" id="comp-ratio-display">4:1</span>
+    </div>
+
+    <div class="fx-group">
+      <span class="fx-label" style="color:var(--text)">WIDTH</span>
+      <input type="range" class="horizontal" id="stereo-width" min="0" max="2" step="0.05" value="1" style="width:90px" />
+      <span class="val-display" id="stereo-width-display">Normal</span>
+    </div>
+  </div>
+
+<script src="popup.js"></script>
+</body>
+</html>

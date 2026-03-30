@@ -1,0 +1,52 @@
+{
+  "manifest_version": 3,
+  "name": "SculptEQ",
+  "version": "0.1.0",
+  "description": "16-band parametric EQ + compressor for streaming services",
+  "permissions": [
+    "storage",
+    "tabs"
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "SculptEQ EQ",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://music.youtube.com/*",
+        "https://open.spotify.com/*",
+        "https://music.apple.com/*",
+        "https://listen.tidal.com/*"
+      ],
+      "js": [
+        "content-dsp.js"
+      ],
+      "world": "MAIN",
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://music.youtube.com/*",
+        "https://open.spotify.com/*",
+        "https://music.apple.com/*",
+        "https://listen.tidal.com/*"
+      ],
+      "js": [
+        "content-bridge.js"
+      ],
+      "run_at": "document_start"
+    }
+  ],
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAu6LEtDB8pI4JGRRsQbyoEfYYi0DiW7RqZdzX3IWbqFY3vxC4Hq+SXBWEoNldZ6d+E6rGiBYZZ5oG2jQighFhzOkBSO+1gpbH9VLyBypKPeAC2LY1Y/vQhW2wLQEHEP/sp9iFwoxXIfBK8QmeiK1SuG+xerBvVvtFGc2OEXbiA+5Q8fwCYYjngjEzAo1if9o3B8zLPdyhR8vYFzFN0rkzrpkvO2ZhrC9YR8dCDlBFhUoOH/vVUO9DUFa9aM1Hhx60xZl/RstXNQ83IeCFvnGdFdpJspvMraoclXJeOU+EhrnlTYhey6Pv0FIQhb9ArpL9MK8MM372LrdA2wJme8SLBwIDAQAB"
+}
